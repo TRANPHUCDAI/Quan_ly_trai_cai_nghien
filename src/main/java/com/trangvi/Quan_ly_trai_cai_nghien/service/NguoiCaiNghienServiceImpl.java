@@ -15,6 +15,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.io.FileReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -23,7 +24,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, CommandLineRunner{
+public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, CommandLineRunner {
     private final NguoiCaiNghienRepository nguoiCaiNghienRepository;
     private final DanTocRepository danTocRepository;
     private final CaxLapHsRepository caxLapHsRepository;
@@ -42,14 +43,30 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
     }
 
     @Override
-    public NguoiCaiNghienResponseDTO save(NguoiCaiNghienRequestDTO dto) {
-        NguoiCaiNghien entity = convertToEntity(dto);
+    @Transactional
+    public NguoiCaiNghienResponseDTO create(NguoiCaiNghienRequestDTO dto) {
+        NguoiCaiNghien entity = new NguoiCaiNghien();
+        mapDtoToEntity(dto, entity);
         NguoiCaiNghien savedEntity = nguoiCaiNghienRepository.save(entity);
         return convertToResponseDTO(savedEntity);
     }
 
     @Override
+    @Transactional
+    public NguoiCaiNghienResponseDTO update(Integer id, NguoiCaiNghienRequestDTO dto) {
+        NguoiCaiNghien entity = nguoiCaiNghienRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người cai nghiện có ID: " + id));
+        mapDtoToEntity(dto, entity);
+        NguoiCaiNghien updatedEntity = nguoiCaiNghienRepository.save(entity);
+        return convertToResponseDTO(updatedEntity);
+    }
+
+    @Override
+    @Transactional
     public void delete(Integer id) {
+        if (!nguoiCaiNghienRepository.existsById(id)) {
+            throw new RuntimeException("Không tìm thấy hồ sơ đối tượng cần xóa với ID: " + id);
+        }
         nguoiCaiNghienRepository.deleteById(id);
     }
 
@@ -77,7 +94,6 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
             log.info("Dữ liệu đã tồn tại, bỏ qua bước khởi tạo tự động từ CSV.");
             return;
         }
-
         String csvPath = "/app/data/Du_lieu_nguoi_cai_nghien.csv";
         log.info("Bắt đầu đọc và nạp file dữ liệu CSV từ đường dẫn: {}", csvPath);
 
@@ -93,7 +109,6 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
 
             for (int i = 1; i < lines.size(); i++) {
                 String[] row = lines.get(i);
-
                 NguoiCaiNghien n = new NguoiCaiNghien();
                 n.setHoVaTen(row[headMap.get("Họ và tên")]);
                 n.setCccdCmnd(row[headMap.get("CCCD/CMND")]);
@@ -135,7 +150,6 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
                             .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, tenCax)));
                     n.setCaxLapHs(cax);
                 }
-
                 nguoiCaiNghienRepository.save(n);
             }
             log.info(">>> ĐÃ TỰ ĐỘNG IMPORT THÀNH CÔNG HỒ SƠ TỪ FILE CSV VÀO POSTGRESQL! <<<");
@@ -159,7 +173,6 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
         return null;
     }
 
-    // Các hàm Mapper hỗ trợ chuyển đổi
     private NguoiCaiNghienResponseDTO convertToResponseDTO(NguoiCaiNghien n) {
         NguoiCaiNghienResponseDTO dto = new NguoiCaiNghienResponseDTO();
         dto.setTt(n.getTt());
@@ -201,42 +214,42 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
         return dto;
     }
 
-    private NguoiCaiNghien convertToEntity(NguoiCaiNghienRequestDTO dto) {
-        NguoiCaiNghien n = new NguoiCaiNghien();
-        n.setTt(dto.getTt());
+    // ĐỒNG BỘ TOÀN DIỆN CÁC TRƯỜNG NGÀY THÁNG VÀ SỐ LIỆU ĐỂ LƯU XUỐNG DB AN TOÀN
+    private void mapDtoToEntity(NguoiCaiNghienRequestDTO dto, NguoiCaiNghien n) {
         n.setHoVaTen(dto.getHoVaTen());
         n.setCccdCmnd(dto.getCccdCmnd());
-        n.setNgayCap(dto.getNgayCap());
-        n.setCaiNghienLanThu(dto.getCaiNghienLanThu());
-        n.setThoidiemSdMaTuyDau(dto.getThoidiemSdMaTuyDau());
-        n.setTienAn(dto.getTienAn());
-        n.setTienSu(dto.getTienSu());
-        n.setNgaySinh(dto.getNgaySinh());
-        n.setTuoi(dto.getTuoi());
+        n.setCaiNghienLanThu(dto.getCaiNghienLanThu() != null ? dto.getCaiNghienLanThu() : 0);
+        n.setTienAn(dto.getTienAn() != null ? dto.getTienAn() : 0);
+        n.setTienSu(dto.getTienSu() != null ? dto.getTienSu() : 0);
         n.setQueQuan(dto.getQueQuan());
         n.setHkThuongTru(dto.getHkThuongTru());
         n.setDiaChiSauSatNhap(dto.getDiaChiSauSatNhap());
-        n.setNgayVaoCs(dto.getNgayVaoCs());
-        n.setDuKienNgayVe(dto.getDuKienNgayVe());
-        n.setDuKienVe2026(dto.getDuKienVe2026());
-        n.setDuKienVe2027(dto.getDuKienVe2027());
-        n.setHinhThucCaiNghien(dto.getHinhThucCaiNghien());
-        n.setSoThangDaCh(dto.getSoThangDaCh());
-        n.setSoNgayDaCh(dto.getSoNgayDaCh());
+        n.setHinhThucCaiNghien(dto.getHinhThucCaiNghien() != null ? dto.getHinhThucCaiNghien() : "Bắt buộc");
+        n.setSoThangDaCh(dto.getSoThangDaCh() != null ? dto.getSoThangDaCh() : 0);
+        n.setSoNgayDaCh(dto.getSoNgayDaCh() != null ? dto.getSoNgayDaCh() : 0);
         n.setQdToaAn(dto.getQdToaAn());
-        n.setThoiGianCh(dto.getThoiGianCh());
+        n.setThoiGianCh(dto.getThoiGianCh() != null ? dto.getThoiGianCh() : 0);
         n.setTandKhuVuc(dto.getTandKhuVuc());
         n.setQdXetGiam(dto.getQdXetGiam());
         n.setDaiDienGiaDinh(dto.getDaiDienGiaDinh());
         n.setTrinhDo(dto.getTrinhDo());
         n.setGhiChu(dto.getGhiChu());
 
+        // Ánh xạ an toàn các trường Ngày tháng (LocalDate) tránh lỗi NullPointerException
+        n.setNgaySinh(dto.getNgaySinh());
+        n.setNgayCap(dto.getNgayCap());
+        n.setThoidiemSdMaTuyDau(dto.getThoidiemSdMaTuyDau());
+        n.setNgayVaoCs(dto.getNgayVaoCs());
+        n.setDuKienNgayVe(dto.getDuKienNgayVe());
+        n.setDuKienVe2026(dto.getDuKienVe2026());
+        n.setDuKienVe2027(dto.getDuKienVe2027());
+
+        // Ánh xạ khóa ngoại thông qua ID
         if (dto.getIdCaxLap() != null) {
             caxLapHsRepository.findById(dto.getIdCaxLap()).ifPresent(n::setCaxLapHs);
         }
         if (dto.getIdDanToc() != null) {
             danTocRepository.findById(dto.getIdDanToc()).ifPresent(n::setDanToc);
         }
-        return n;
     }
 }

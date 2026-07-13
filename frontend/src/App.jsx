@@ -52,25 +52,32 @@ function App() {
   useEffect(() => { fetchStats(); }, []);
 
   // XỬ LÝ: THÊM MỚI HOẶC CẬP NHẬT (SAVE)
-  const handleSavePerson = async (formData) => {
-    try {
-      if (formData.tt) {
-        // Nếu có trường 'tt' (Khóa chính) -> Thực hiện Cập nhật (PUT)
-        await axios.put(`${API_BASE}/${formData.tt}`, formData);
-        alert("Cập nhật thông tin hồ sơ thành công!");
-      } else {
-        // Nếu không có 'tt' -> Thực hiện Tạo mới (POST)
-        await axios.post(API_BASE, formData);
-        alert("Thêm mới hồ sơ thành công!");
+    const handleSavePerson = async (formData) => {
+      try {
+        if (formData.tt) {
+          // Thực hiện Cập nhật (PUT) theo ID (trường tt)
+          await axios.put(`${API_BASE}/${formData.tt}`, formData);
+          alert("Cập nhật thông tin hồ sơ thành công!");
+        } else {
+          // Thực hiện Tạo mới (POST)
+          await axios.post(API_BASE, formData);
+          alert("Thêm mới hồ sơ thành công!");
+        }
+
+        // 1. Đóng Form Modal lại ngay lập tức
+        setIsFormOpen(false);
+
+        // 2. ÉP RE-RENDER: Gọi lại API lấy danh sách mới nhất từ Database đổ vào state
+        await fetchListData();
+
+        // 3. Cập nhật lại luôn cả các ô vuông thống kê số lượng xã nếu có thay đổi địa bàn
+        await fetchStats();
+
+      } catch (error) {
+        console.error("Lỗi khi lưu hồ sơ dữ liệu:", error);
+        alert("Đã có lỗi xảy ra khi lưu dữ liệu!");
       }
-      setIsFormOpen(false);
-      fetchListData(); // Làm mới bảng danh sách
-      fetchStats();    // Làm mới ô vuông số lượng xã
-    } catch (error) {
-      console.error("Lỗi khi lưu hồ sơ dữ liệu:", error);
-      alert("Đã có lỗi xảy ra khi lưu dữ liệu!");
-    }
-  };
+    };
 
   // XỬ LÝ: XÓA HỒ SƠ (DELETE)
   const handleDeletePerson = async (ttId) => {

@@ -9,9 +9,17 @@ import java.util.Map;
 
 public interface NguoiCaiNghienService {
     Page<NguoiCaiNghienResponseDTO> getAllAndSearch(String keyword, String tenCax, Integer idDanToc, Pageable pageable);
+
     NguoiCaiNghienResponseDTO getById(Integer id);
-    NguoiCaiNghienResponseDTO save(NguoiCaiNghienRequestDTO dto);
+
+    // Tách rõ ràng để đồng bộ với các phương thức HTTP Client
+    NguoiCaiNghienResponseDTO create(NguoiCaiNghienRequestDTO dto);
+
+    NguoiCaiNghienResponseDTO update(Integer id, NguoiCaiNghienRequestDTO dto);
+
     void delete(Integer id);
+
     List<Map<String, Object>> getThongKeTheoXa();
+
     void importCsvData();
 }
