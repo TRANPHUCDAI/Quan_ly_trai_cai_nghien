@@ -110,84 +110,85 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
             log.warn("Bảng chưa được khởi tạo hoàn toàn hoặc chưa có dữ liệu. Tiến hành tạo bảng và import mới...");
         }
 
-        String csvPath = "data/Du_lieu_nguoi_cai_nghien.csv";
-        File csvFile = new File(csvPath);
-        if (!csvFile.exists()) {
-            log.warn("Không tìm thấy file ở: {}, thử quét đường dẫn tuyệt đối /app/data...", csvPath);
-            csvPath = "/app/data/Du_lieu_nguoi_cai_nghien.csv";
-            csvFile = new File(csvPath);
-        }
-        log.info("Bắt đầu đọc và nạp file dữ liệu CSV từ đường dẫn: {}", csvPath);
+        log.info("Bắt đầu đọc dữ liệu hành chính trực tiếp từ Classpath Resource...");
 
-        try (CSVReader reader = new CSVReader(new FileReader(csvPath))) {
-            List<String[]> lines = reader.readAll();
-            if (lines.isEmpty()) return;
-
-            // Đọc Header và chuẩn hóa chữ thường để không sợ lệch hoa/thường, khoảng trắng
-            String[] headers = lines.get(0);
-            Map<String, Integer> headMap = new HashMap<>();
-            for (int i = 0; i < headers.length; i++) {
-                headMap.put(headers[i].trim().toLowerCase(), i);
+        try (var inputStream = getClass().getClassLoader().getResourceAsStream("Du_lieu_nguoi_cai_nghien.csv")) {
+            if (inputStream == null) {
+                log.error("Không tìm thấy file 'Du_lieu_nguoi_cai_nghien.csv' trong thư mục src/main/resources!");
+                return;
             }
 
-            for (int i = 1; i < lines.size(); i++) {
-                String[] row = lines.get(i);
-                NguoiCaiNghien n = new NguoiCaiNghien();
-
-                n.setHoVaTen(getValueByHeader(row, headMap, "họ và tên"));
-                n.setCccdCmnd(getValueByHeader(row, headMap, "cccd/cmnd"));
-                n.setNgayCap(parseDate(getValueByHeader(row, headMap, "ngày cấp")));
-                n.setCaiNghienLanThu(parseInt(getValueByHeader(row, headMap, "cai nghiện lần thứ")));
-                n.setThoidiemSdMaTuyDau(parseDate(getValueByHeader(row, headMap, "thời điểm sử dụng ma túy lần đầu")));
-                n.setTienAn(parseInt(getValueByHeader(row, headMap, "tiền án")));
-                n.setTienSu(parseInt(getValueByHeader(row, headMap, "tiền sự")));
-                n.setNgaySinh(parseDate(getValueByHeader(row, headMap, "ngày sinh")));
-
-                // Fallback trường tuổi viết sai dấu
-                String tuoiStr = getValueByHeader(row, headMap, "tuổi");
-                if (tuoiStr == null) tuoiStr = getValueByHeader(row, headMap, "tuôi");
-                n.setTuoi(parseInt(tuoiStr));
-
-                n.setQueQuan(getValueByHeader(row, headMap, "quê quán"));
-                n.setHkThuongTru(getValueByHeader(row, headMap, "hk thường trú"));
-                n.setDiaChiSauSatNhap(getValueByHeader(row, headMap, "địa chỉ sau sát nhập"));
-                n.setNgayVaoCs(parseDate(getValueByHeader(row, headMap, "ngày vào cs")));
-                n.setDuKienNgayVe(parseDate(getValueByHeader(row, headMap, "dự kiến ngày về")));
-                n.setDuKienVe2026(parseInt(getValueByHeader(row, headMap, "dự kiến về 2026")));
-                n.setDuKienVe2027(parseInt(getValueByHeader(row, headMap, "dự kiến về 2027")));
-                n.setHinhThucCaiNghien(getValueByHeader(row, headMap, "hình thức cai nghiện"));
-                n.setSoThangDaCh(parseInt(getValueByHeader(row, headMap, "số tháng đã c/h")));
-                n.setSoNgayDaCh(parseInt(getValueByHeader(row, headMap, "số ngày đã c/h")));
-                n.setQdToaAn(getValueByHeader(row, headMap, "qđ tòa án"));
-                n.setThoiGianCh(parseInt(getValueByHeader(row, headMap, "thời gian ch")));
-                n.setTandKhuVuc(getValueByHeader(row, headMap, "tand khu vực"));
-                n.setQdXetGiam(getValueByHeader(row, headMap, "qđ xét giảm"));
-                n.setDaiDienGiaDinh(getValueByHeader(row, headMap, "đai diện gia đình"));
-                n.setTrinhDo(getValueByHeader(row, headMap, "trình độ"));
-                n.setGhiChu(getValueByHeader(row, headMap, "ghi chú"));
-
-                String tenDanToc = cleanString(getValueByHeader(row, headMap, "dân tộc"));
-                if (tenDanToc != null && !tenDanToc.isEmpty()) {
-                    DanToc dt = danTocRepository.findByTenDanToc(tenDanToc)
-                            .orElseGet(() -> danTocRepository.save(new DanToc(null, tenDanToc)));
-                    n.setDanToc(dt);
+            try (CSVReader reader = new CSVReader(new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8))) {
+                List<String[]> lines = reader.readAll();
+                if (lines.isEmpty()) {
+                    log.warn("File CSV trong tài nguyên trống rỗng.");
+                    return;
                 }
 
-                String tenCax = cleanString(getValueByHeader(row, headMap, "cax lập hs"));
-                if (tenCax != null && !tenCax.isEmpty()) {
-                    CaxLapHs cax = caxLapHsRepository.findByTenCax(tenCax)
-                            .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, tenCax)));
-                    n.setCaxLapHs(cax);
-                } else {
-                    CaxLapHs fallbackCax = caxLapHsRepository.findAll().stream().findFirst()
-                            .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, "Chưa xác định")));
-                    n.setCaxLapHs(fallbackCax);
+                String[] headers = lines.get(0);
+                Map<String, Integer> headMap = new HashMap<>();
+                for (int i = 0; i < headers.length; i++) {
+                    headMap.put(headers[i].trim().toLowerCase(), i);
                 }
-                nguoiCaiNghienRepository.save(n);
+
+                for (int i = 1; i < lines.size(); i++) {
+                    String[] row = lines.get(i);
+                    NguoiCaiNghien n = new NguoiCaiNghien();
+
+                    n.setHoVaTen(getValueByHeader(row, headMap, "họ và tên"));
+                    n.setCccdCmnd(getValueByHeader(row, headMap, "cccd/cmnd"));
+                    n.setNgayCap(parseDate(getValueByHeader(row, headMap, "ngày cấp")));
+                    n.setCaiNghienLanThu(parseInt(getValueByHeader(row, headMap, "cai nghiện lần thứ")));
+                    n.setThoidiemSdMaTuyDau(parseDate(getValueByHeader(row, headMap, "thời điểm sử dụng ma túy lần đầu")));
+                    n.setTienAn(parseInt(getValueByHeader(row, headMap, "tiền án")));
+                    n.setTienSu(parseInt(getValueByHeader(row, headMap, "tiền sự")));
+                    n.setNgaySinh(parseDate(getValueByHeader(row, headMap, "ngày sinh")));
+
+                    String tuoiStr = getValueByHeader(row, headMap, "tuổi");
+                    if (tuoiStr == null) tuoiStr = getValueByHeader(row, headMap, "tuôi");
+                    n.setTuoi(parseInt(tuoiStr));
+
+                    n.setQueQuan(getValueByHeader(row, headMap, "quê quán"));
+                    n.setHkThuongTru(getValueByHeader(row, headMap, "hk thường trú"));
+                    n.setDiaChiSauSatNhap(getValueByHeader(row, headMap, "địa chỉ sau sát nhập"));
+                    n.setNgayVaoCs(parseDate(getValueByHeader(row, headMap, "ngày vào cs")));
+                    n.setDuKienNgayVe(parseDate(getValueByHeader(row, headMap, "dự kiến ngày về")));
+                    n.setDuKienVe2026(parseInt(getValueByHeader(row, headMap, "dự kiến về 2026")));
+                    n.setDuKienVe2027(parseInt(getValueByHeader(row, headMap, "dự kiến về 2027")));
+                    n.setHinhThucCaiNghien(getValueByHeader(row, headMap, "hình thức cai nghiện"));
+                    n.setSoThangDaCh(parseInt(getValueByHeader(row, headMap, "số tháng đã c/h")));
+                    n.setSoNgayDaCh(parseInt(getValueByHeader(row, headMap, "số ngày đã c/h")));
+                    n.setQdToaAn(getValueByHeader(row, headMap, "qđ tòa án"));
+                    n.setThoiGianCh(parseInt(getValueByHeader(row, headMap, "thời gian ch")));
+                    n.setTandKhuVuc(getValueByHeader(row, headMap, "tand khu vực"));
+                    n.setQdXetGiam(getValueByHeader(row, headMap, "qđ xét giảm"));
+                    n.setDaiDienGiaDinh(getValueByHeader(row, headMap, "đai diện gia đình"));
+                    n.setTrinhDo(getValueByHeader(row, headMap, "trình độ"));
+                    n.setGhiChu(getValueByHeader(row, headMap, "ghi chú"));
+
+                    String tenDanToc = cleanString(getValueByHeader(row, headMap, "dân tộc"));
+                    if (tenDanToc != null && !tenDanToc.isEmpty()) {
+                        DanToc dt = danTocRepository.findByTenDanToc(tenDanToc)
+                                .orElseGet(() -> danTocRepository.save(new DanToc(null, tenDanToc)));
+                        n.setDanToc(dt);
+                    }
+
+                    String tenCax = cleanString(getValueByHeader(row, headMap, "cax lập hs"));
+                    if (tenCax != null && !tenCax.isEmpty()) {
+                        CaxLapHs cax = caxLapHsRepository.findByTenCax(tenCax)
+                                .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, tenCax)));
+                        n.setCaxLapHs(cax);
+                    } else {
+                        CaxLapHs fallbackCax = caxLapHsRepository.findAll().stream().findFirst()
+                                .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, "Chưa xác định")));
+                        n.setCaxLapHs(fallbackCax);
+                    }
+                    nguoiCaiNghienRepository.save(n);
+                }
+                log.info(">>> ĐÃ TỰ ĐỘNG IMPORT THÀNH CÔNG HỒ SƠ TỪ RESOURCE VÀO CLOUD POSTGRESQL! <<<");
             }
-            log.info(">>> ĐÃ TỰ ĐỘNG IMPORT THÀNH CÔNG HỒ SƠ TỪ FILE CSV VÀO POSTGRESQL! <<<");
         } catch (Exception e) {
-            log.error("Lỗi khi tự động import dữ liệu CSV: ", e);
+            log.error("Lỗi nghiêm trọng khi nạp dữ liệu từ tài nguyên hệ thống: ", e);
         }
     }
 
