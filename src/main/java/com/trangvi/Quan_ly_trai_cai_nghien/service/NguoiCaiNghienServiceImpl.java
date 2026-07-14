@@ -16,10 +16,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.io.File;
 import java.io.FileReader;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -99,22 +98,22 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
     }
 
     @Override
+    @Transactional
     public void importCsvData() {
-        // Bọc try-catch an toàn cho lần đầu tiên chạy tạo bảng
         try {
             if (nguoiCaiNghienRepository.count() > 0) {
-                log.info("Dữ liệu đã tồn tại, bỏ qua bước khởi tạo tự động từ CSV.");
+                log.info("Dữ liệu đã tồn tại trong database, bỏ qua bước khởi tạo tự động từ CSV.");
                 return;
             }
         } catch (Exception e) {
-            log.warn("Bảng chưa được khởi tạo hoàn toàn hoặc chưa có dữ liệu. Tiến hành tạo bảng và import mới...");
+            log.warn("Chưa khởi tạo dữ liệu hoặc bảng trống. Hệ thống bắt đầu nạp dữ liệu...");
         }
 
         log.info("Bắt đầu đọc dữ liệu hành chính trực tiếp từ Classpath Resource...");
 
         try (var inputStream = getClass().getClassLoader().getResourceAsStream("Du_lieu_nguoi_cai_nghien.csv")) {
             if (inputStream == null) {
-                log.error("Không tìm thấy file 'Du_lieu_nguoi_cai_nghien.csv' trong thư mục src/main/resources!");
+                log.error("Không tìm thấy file 'Du_lieu_nguoi_cai_nghien.csv' trong tài nguyên hệ thống!");
                 return;
             }
 
@@ -131,68 +130,158 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
                     headMap.put(headers[i].trim().toLowerCase(), i);
                 }
 
+                int successCount = 0;
+                int failCount = 0;
+
                 for (int i = 1; i < lines.size(); i++) {
                     String[] row = lines.get(i);
-                    NguoiCaiNghien n = new NguoiCaiNghien();
 
-                    n.setHoVaTen(getValueByHeader(row, headMap, "họ và tên"));
-                    n.setCccdCmnd(getValueByHeader(row, headMap, "cccd/cmnd"));
-                    n.setNgayCap(parseDate(getValueByHeader(row, headMap, "ngày cấp")));
-                    n.setCaiNghienLanThu(parseInt(getValueByHeader(row, headMap, "cai nghiện lần thứ")));
-                    n.setThoidiemSdMaTuyDau(parseDate(getValueByHeader(row, headMap, "thời điểm sử dụng ma túy lần đầu")));
-                    n.setTienAn(parseInt(getValueByHeader(row, headMap, "tiền án")));
-                    n.setTienSu(parseInt(getValueByHeader(row, headMap, "tiền sự")));
-                    n.setNgaySinh(parseDate(getValueByHeader(row, headMap, "ngày sinh")));
+                    try {
+                        NguoiCaiNghien n = new NguoiCaiNghien();
 
-                    String tuoiStr = getValueByHeader(row, headMap, "tuổi");
-                    if (tuoiStr == null) tuoiStr = getValueByHeader(row, headMap, "tuôi");
-                    n.setTuoi(parseInt(tuoiStr));
+                        // 1. CHUẨN HÓA HỌ VÀ TÊN (Viết hoa chữ đầu, làm sạch dấu cách thừa)
+                        String rawHoTen = getValueByHeader(row, headMap, "họ và tên");
+                        n.setHoVaTen(capitalizeWords(rawHoTen));
 
-                    n.setQueQuan(getValueByHeader(row, headMap, "quê quán"));
-                    n.setHkThuongTru(getValueByHeader(row, headMap, "hk thường trú"));
-                    n.setDiaChiSauSatNhap(getValueByHeader(row, headMap, "địa chỉ sau sát nhập"));
-                    n.setNgayVaoCs(parseDate(getValueByHeader(row, headMap, "ngày vào cs")));
-                    n.setDuKienNgayVe(parseDate(getValueByHeader(row, headMap, "dự kiến ngày về")));
-                    n.setDuKienVe2026(parseInt(getValueByHeader(row, headMap, "dự kiến về 2026")));
-                    n.setDuKienVe2027(parseInt(getValueByHeader(row, headMap, "dự kiến về 2027")));
-                    n.setHinhThucCaiNghien(getValueByHeader(row, headMap, "hình thức cai nghiện"));
-                    n.setSoThangDaCh(parseInt(getValueByHeader(row, headMap, "số tháng đã c/h")));
-                    n.setSoNgayDaCh(parseInt(getValueByHeader(row, headMap, "số ngày đã c/h")));
-                    n.setQdToaAn(getValueByHeader(row, headMap, "qđ tòa án"));
-                    n.setThoiGianCh(parseInt(getValueByHeader(row, headMap, "thời gian ch")));
-                    n.setTandKhuVuc(getValueByHeader(row, headMap, "tand khu vực"));
-                    n.setQdXetGiam(getValueByHeader(row, headMap, "qđ xét giảm"));
-                    n.setDaiDienGiaDinh(getValueByHeader(row, headMap, "đai diện gia đình"));
-                    n.setTrinhDo(getValueByHeader(row, headMap, "trình độ"));
-                    n.setGhiChu(getValueByHeader(row, headMap, "ghi chú"));
+                        // 2. CHUẨN HÓA CCCD/CMND (Loại bỏ khoảng trắng, dấu chấm)
+                        String rawCccd = getValueByHeader(row, headMap, "cccd/cmnd");
+                        n.setCccdCmnd(cleanCccd(rawCccd));
 
-                    String tenDanToc = cleanString(getValueByHeader(row, headMap, "dân tộc"));
-                    if (tenDanToc != null && !tenDanToc.isEmpty()) {
-                        DanToc dt = danTocRepository.findByTenDanToc(tenDanToc)
-                                .orElseGet(() -> danTocRepository.save(new DanToc(null, tenDanToc)));
-                        n.setDanToc(dt);
+                        n.setNgayCap(parseDate(getValueByHeader(row, headMap, "ngày cấp")));
+                        n.setCaiNghienLanThu(parseInt(getValueByHeader(row, headMap, "cai nghiện lần thứ")));
+                        n.setThoidiemSdMaTuyDau(parseDate(getValueByHeader(row, headMap, "thời điểm sử dụng ma túy lần đầu")));
+                        n.setTienAn(parseInt(getValueByHeader(row, headMap, "tiền án")));
+                        n.setTienSu(parseInt(getValueByHeader(row, headMap, "tiền sự")));
+
+                        LocalDate ngaySinh = parseDate(getValueByHeader(row, headMap, "ngày sinh"));
+                        n.setNgaySinh(ngaySinh);
+
+                        // 3. TỰ ĐỘNG TÍNH TUỔI THEO NGÀY SINH (Nếu ngày sinh hợp lệ)
+                        String tuoiStr = getValueByHeader(row, headMap, "tuổi");
+                        if (tuoiStr == null) tuoiStr = getValueByHeader(row, headMap, "tuôi");
+                        int tuoiGốc = parseInt(tuoiStr);
+                        n.setTuoi(calculateActualAge(ngaySinh, tuoiGốc));
+
+                        n.setQueQuan(capitalizeWords(getValueByHeader(row, headMap, "quê quán")));
+                        n.setHkThuongTru(getValueByHeader(row, headMap, "hk thường trú"));
+                        n.setDiaChiSauSatNhap(getValueByHeader(row, headMap, "địa chỉ sau sát nhập"));
+                        n.setNgayVaoCs(parseDate(getValueByHeader(row, headMap, "ngày vào cs")));
+                        n.setDuKienNgayVe(parseDate(getValueByHeader(row, headMap, "dự kiến ngày về")));
+                        n.setDuKienVe2026(parseInt(getValueByHeader(row, headMap, "dự kiến về 2026")));
+                        n.setDuKienVe2027(parseInt(getValueByHeader(row, headMap, "dự kiến về 2027")));
+
+                        // 4. TIỀN XỬ LÝ HÌNH THỨC CAI NGHIỆN (Chỉ nhận Bắt buộc, Tự nguyện, Lưu trú)
+                        String rawHinhThuc = getValueByHeader(row, headMap, "hình thức cai nghiện");
+                        n.setHinhThucCaiNghien(normalizeHinhThuc(rawHinhThuc));
+
+                        n.setSoThangDaCh(parseInt(getValueByHeader(row, headMap, "số tháng đã c/h")));
+                        n.setSoNgayDaCh(parseInt(getValueByHeader(row, headMap, "số ngày đã c/h")));
+                        n.setQdToaAn(getValueByHeader(row, headMap, "qđ tòa án"));
+                        n.setThoiGianCh(parseInt(getValueByHeader(row, headMap, "thời gian ch")));
+                        n.setTandKhuVuc(getValueByHeader(row, headMap, "tand khu vực"));
+                        n.setQdXetGiam(getValueByHeader(row, headMap, "qđ xét giảm"));
+                        n.setDaiDienGiaDinh(capitalizeWords(getValueByHeader(row, headMap, "đai diện gia đình")));
+                        n.setTrinhDo(getValueByHeader(row, headMap, "trình độ"));
+                        n.setGhiChu(getValueByHeader(row, headMap, "ghi chú"));
+
+                        String tenDanToc = cleanString(getValueByHeader(row, headMap, "dân tộc"));
+                        if (tenDanToc != null && !tenDanToc.isEmpty()) {
+                            // Viết hoa chữ cái đầu dân tộc (Kinh, Tày, Nùng...)
+                            final String formattedDanToc = capitalizeWords(tenDanToc);
+                            DanToc dt = danTocRepository.findByTenDanToc(formattedDanToc)
+                                    .orElseGet(() -> danTocRepository.save(new DanToc(null, formattedDanToc)));
+                            n.setDanToc(dt);
+                        }
+
+                        String tenCax = cleanString(getValueByHeader(row, headMap, "cax lập hs"));
+                        if (tenCax != null && !tenCax.isEmpty()) {
+                            final String formattedCax = formatStreetName(tenCax);
+                            CaxLapHs cax = caxLapHsRepository.findByTenCax(formattedCax)
+                                    .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, formattedCax)));
+                            n.setCaxLapHs(cax);
+                        } else {
+                            CaxLapHs fallbackCax = caxLapHsRepository.findAll().stream().findFirst()
+                                    .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, "Chưa xác định")));
+                            n.setCaxLapHs(fallbackCax);
+                        }
+
+                        nguoiCaiNghienRepository.save(n);
+                        successCount++;
+                    } catch (Exception rowEx) {
+                        failCount++;
+                        log.warn("Bỏ qua dòng số {} do lỗi phân tích dữ liệu: {}", i + 1, rowEx.getMessage());
                     }
-
-                    String tenCax = cleanString(getValueByHeader(row, headMap, "cax lập hs"));
-                    if (tenCax != null && !tenCax.isEmpty()) {
-                        CaxLapHs cax = caxLapHsRepository.findByTenCax(tenCax)
-                                .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, tenCax)));
-                        n.setCaxLapHs(cax);
-                    } else {
-                        CaxLapHs fallbackCax = caxLapHsRepository.findAll().stream().findFirst()
-                                .orElseGet(() -> caxLapHsRepository.save(new CaxLapHs(null, "Chưa xác định")));
-                        n.setCaxLapHs(fallbackCax);
-                    }
-                    nguoiCaiNghienRepository.save(n);
                 }
-                log.info(">>> ĐÃ TỰ ĐỘNG IMPORT THÀNH CÔNG HỒ SƠ TỪ RESOURCE VÀO CLOUD POSTGRESQL! <<<");
+                log.info(">>> HOÀN THÀNH TIẾN TRÌNH: Import thành công {} dòng, thất bại {} dòng. <<<", successCount, failCount);
             }
         } catch (Exception e) {
             log.error("Lỗi nghiêm trọng khi nạp dữ liệu từ tài nguyên hệ thống: ", e);
         }
     }
 
-    // HÀM HELPER: Lấy giá trị an toàn từ Header chữ thường đã chuẩn hóa
+    // ==========================================
+    // CÁC HÀM TIỀN XỬ LÝ DỮ LIỆU CHUẨN HOÁ
+    // ==========================================
+
+    // Viết hoa chữ cái đầu của mỗi từ (Ví dụ: "trần phúc đại" -> "Trần Phúc Đại")
+    private String capitalizeWords(String str) {
+        String clean = cleanString(str);
+        if (clean == null || clean.isEmpty()) return null;
+
+        String[] words = clean.split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                sb.append(Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1).toLowerCase())
+                        .append(" ");
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    // Chuẩn hóa tên Phường/Xã lập hồ sơ
+    private String formatStreetName(String str) {
+        String clean = capitalizeWords(str);
+        if (clean == null) return null;
+        if (clean.toLowerCase().startsWith("xã ") || clean.toLowerCase().startsWith("thị trấn ")) {
+            return clean;
+        }
+        return clean; // Giữ nguyên tên đã viết hoa đẹp đẽ
+    }
+
+    // Làm sạch số CMND/CCCD (Chỉ giữ lại các chữ số)
+    private String cleanCccd(String str) {
+        String clean = cleanString(str);
+        if (clean == null) return null;
+        return clean.replaceAll("[^0-9]", ""); // Xóa toàn bộ ký tự không phải số
+    }
+
+    // Tiền xử lý chuẩn hóa Hình thức cai nghiện về 3 nhóm duy nhất
+    private String normalizeHinhThuc(String str) {
+        String clean = cleanString(str);
+        if (clean == null) return "Bắt buộc"; // Nhóm mặc định nếu bị rỗng
+
+        String lower = clean.toLowerCase();
+        if (lower.contains("tự nguyện") || lower.contains("tu nguyen")) {
+            return "Tự nguyện";
+        } else if (lower.contains("lưu trú") || lower.contains("luu tru")) {
+            return "Lưu trú";
+        }
+        return "Bắt buộc"; // Các trường hợp khác quy về bắt buộc
+    }
+
+    // Tự động tính toán lại tuổi thực tế dựa trên ngày sinh và năm hiện tại 2026
+    private int calculateActualAge(LocalDate ngaySinh, int backupTuoi) {
+        if (ngaySinh == null) return backupTuoi > 0 ? backupTuoi : 0;
+        try {
+            LocalDate today = LocalDate.now(); // Sử dụng thời gian hiện tại
+            return Period.between(ngaySinh, today).getYears();
+        } catch (Exception e) {
+            return backupTuoi;
+        }
+    }
+
     private String getValueByHeader(String[] row, Map<String, Integer> headMap, String headerName) {
         Integer index = headMap.get(headerName.toLowerCase());
         if (index != null && index < row.length) {
@@ -201,7 +290,6 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
         return null;
     }
 
-    // HÀM HELPER: Loại bỏ khoảng trắng thừa đầu cuối và khoảng trắng kép ở giữa
     private String cleanString(String val) {
         if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("NaN")) return null;
         return val.trim().replaceAll("\\s+", " ");
@@ -264,25 +352,24 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
     }
 
     private void mapDtoToEntity(NguoiCaiNghienRequestDTO dto, NguoiCaiNghien n) {
-        n.setHoVaTen(cleanString(dto.getHoVaTen()));
-        n.setCccdCmnd(cleanString(dto.getCccdCmnd()));
+        n.setHoVaTen(capitalizeWords(dto.getHoVaTen()));
+        n.setCccdCmnd(cleanCccd(dto.getCccdCmnd()));
         n.setCaiNghienLanThu(dto.getCaiNghienLanThu() != null ? dto.getCaiNghienLanThu() : 0);
         n.setTienAn(dto.getTienAn() != null ? dto.getTienAn() : 0);
         n.setTienSu(dto.getTienSu() != null ? dto.getTienSu() : 0);
 
-        // Làm sạch triệt để thông tin cư trú
-        n.setQueQuan(cleanString(dto.getQueQuan()));
+        n.setQueQuan(capitalizeWords(dto.getQueQuan()));
         n.setHkThuongTru(cleanString(dto.getHkThuongTru()));
         n.setDiaChiSauSatNhap(cleanString(dto.getDiaChiSauSatNhap()));
 
-        n.setHinhThucCaiNghien(dto.getHinhThucCaiNghien() != null ? dto.getHinhThucCaiNghien() : "Bắt buộc");
+        n.setHinhThucCaiNghien(normalizeHinhThuc(dto.getHinhThucCaiNghien()));
         n.setSoThangDaCh(dto.getSoThangDaCh() != null ? dto.getSoThangDaCh() : 0);
         n.setSoNgayDaCh(dto.getSoNgayDaCh() != null ? dto.getSoNgayDaCh() : 0);
         n.setQdToaAn(cleanString(dto.getQdToaAn()));
         n.setThoiGianCh(dto.getThoiGianCh() != null ? dto.getThoiGianCh() : 0);
         n.setTandKhuVuc(cleanString(dto.getTandKhuVuc()));
         n.setQdXetGiam(cleanString(dto.getQdXetGiam()));
-        n.setDaiDienGiaDinh(cleanString(dto.getDaiDienGiaDinh()));
+        n.setDaiDienGiaDinh(capitalizeWords(dto.getDaiDienGiaDinh()));
         n.setTrinhDo(cleanString(dto.getTrinhDo()));
         n.setGhiChu(cleanString(dto.getGhiChu()));
 
