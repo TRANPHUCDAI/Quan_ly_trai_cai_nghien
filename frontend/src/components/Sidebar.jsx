@@ -3,7 +3,7 @@ import React from 'react';
 function Sidebar({ currentTab, setCurrentTab }) {
   const menuItems = [
     { id: 'dashboard', name: 'Bảng điều khiển', icon: '📊' },
-    { id: 'danh-sach', name: 'Quản lý người cai nghiện', icon: '👥' },
+    { id: 'danh-sach', name: 'Danh sách người cai nghiện', icon: '👥' },
     { id: 'thong-ke', name: 'Thống kê khu vực', icon: '📍' },
     { id: 'cấu-hình', name: 'Cấu hình hệ thống', icon: '⚙️' }
   ];
@@ -39,7 +39,7 @@ function Sidebar({ currentTab, setCurrentTab }) {
 
       {/* Footer Admin */}
       <div className="p-4 border-t border-slate-800 text-center text-xs text-slate-500">
-        Phiên bản hệ thống v1.0
+
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 
-function PersonTable({ listData, onRowClick, onEdit, onDelete }) {
+function PersonTable({ listData, onRowClick, onEdit, onDelete, currentPage = 0, pageSize = 15 }) {
   return (
     <div className="overflow-x-auto p-4">
       <table className="min-w-full bg-white border rounded-lg">
@@ -27,16 +27,44 @@ function PersonTable({ listData, onRowClick, onEdit, onDelete }) {
                 onClick={() => onRowClick(person)}
                 className="border-b hover:bg-blue-50 cursor-pointer transition-colors"
               >
-                <td className="p-3">{index + 1}</td>
-                <td className="p-3 font-medium text-gray-900">{person.hoVaTen}</td>
+                <td className="p-3 font-semibold text-gray-500">
+                  {currentPage * pageSize + index + 1}
+                </td>
+
+                <td className="p-3 font-medium text-gray-900">
+                  {person.hoVaTen ? person.hoVaTen.trim().replace(/\s+/g, ' ') : <span className="text-gray-400 italic">Chưa cập nhật</span>}
+                </td>
                 <td className="p-3">{person.cccdCmnd}</td>
                 <td className="p-3">{person.tuoi}</td>
-                <td className="p-3">{person.tenXa || 'Chưa rõ'}</td>
+                <td className="p-3">{person.tenCaxLap || 'Chưa rõ'}</td>
+
+                {/* ĐỒNG BỘ MÀU SẮC TRÊN BẢNG */}
                 <td className="p-3">
-                  <span className="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800">
-                    {person.hinhThucCaiNghien || 'Bắt buộc'}
-                  </span>
+                  {(() => {
+                    const hinhThuc = (person.hinhThucCaiNghien || '').trim();
+                    if (hinhThuc === 'Tự nguyện') {
+                      return (
+                        <span className="px-2.5 py-1 text-xs font-semibold rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Tự nguyện
+                        </span>
+                      );
+                    } else if (hinhThuc === 'Lưu trú') {
+                      return (
+                        <span className="px-2.5 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800 border border-amber-200">
+                          Lưu trú
+                        </span>
+                      );
+                    } else {
+                      // Tất cả các trường hợp khác (bao gồm cả 'Bắt buộc' hoặc rỗng) đều hiển thị màu Đỏ
+                      return (
+                        <span className="px-2.5 py-1 text-xs font-semibold rounded bg-red-100 text-red-800 border border-red-200">
+                          Bắt buộc
+                        </span>
+                      );
+                    }
+                  })()}
                 </td>
+
                 <td className="p-3 text-center space-x-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit(person); }}
