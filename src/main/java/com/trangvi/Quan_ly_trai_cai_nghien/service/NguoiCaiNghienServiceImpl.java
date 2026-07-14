@@ -98,10 +98,16 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
 
     @Override
     public void importCsvData() {
-        if (nguoiCaiNghienRepository.count() > 0) {
-            log.info("Dữ liệu đã tồn tại, bỏ qua bước khởi tạo tự động từ CSV.");
-            return;
+        // Bọc try-catch an toàn cho lần đầu tiên chạy tạo bảng
+        try {
+            if (nguoiCaiNghienRepository.count() > 0) {
+                log.info("Dữ liệu đã tồn tại, bỏ qua bước khởi tạo tự động từ CSV.");
+                return;
+            }
+        } catch (Exception e) {
+            log.warn("Bảng chưa được khởi tạo hoàn toàn hoặc chưa có dữ liệu. Tiến hành tạo bảng và import mới...");
         }
+
         String csvPath = "/app/data/Du_lieu_nguoi_cai_nghien.csv";
         log.info("Bắt đầu đọc và nạp file dữ liệu CSV từ đường dẫn: {}", csvPath);
 
