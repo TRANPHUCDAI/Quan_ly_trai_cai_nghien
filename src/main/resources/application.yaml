@@ -1,3 +1,24 @@
 spring:
   application:
     name: Quan_ly_trai_cai_nghien
+
+  datasource:
+    url ${SPRING_DATASOURCE_URL:jdbc:postgresql://neondb_owner:npg_8ef6JZjiBzWa@ep-small-bird-atagu9sa-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require:
+      ap-southeast-1:
+        aws:
+          neon:
+            tech/neondb?sslmode=require}:
+    username: ${SPRING_DATASOURCE_USERNAME:trangvi}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: org.postgresql.Driver # Khai báo rõ Driver để hệ thống chạy ổn định hơn
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true # Tiện ích: hiển thị câu lệnh SQL ra log khi chạy thử để dễ kiểm soát lỗi
+    properties:
+      hibernate:
+        format_sql: true # Tiện ích: tự động định dạng SQL cho dễ đọc trên Terminal
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        temp:
+          use_jdbc_metadata_defaults: false
