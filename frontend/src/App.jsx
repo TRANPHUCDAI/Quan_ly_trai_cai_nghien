@@ -13,7 +13,7 @@ import PersonFormModal from './components/PersonFormModal';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
-const API_BASE = 'https://quan-ly-trai-cai-nghien-3.onrender.com';
+const API_BASE = 'https://quan-ly-trai-cai-nghien-trangvi.onrender.com';
 
 function App() {
   const [currentTab, setCurrentTab] = useState('danh-sach');
