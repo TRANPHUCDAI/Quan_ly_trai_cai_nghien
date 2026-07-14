@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.io.File;
 import java.io.FileReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -108,7 +110,13 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
             log.warn("Bảng chưa được khởi tạo hoàn toàn hoặc chưa có dữ liệu. Tiến hành tạo bảng và import mới...");
         }
 
-        String csvPath = "/app/data/Du_lieu_nguoi_cai_nghien.csv";
+        String csvPath = "data/Du_lieu_nguoi_cai_nghien.csv";
+        File csvFile = new File(csvPath);
+        if (!csvFile.exists()) {
+            log.warn("Không tìm thấy file ở: {}, thử quét đường dẫn tuyệt đối /app/data...", csvPath);
+            csvPath = "/app/data/Du_lieu_nguoi_cai_nghien.csv";
+            csvFile = new File(csvPath);
+        }
         log.info("Bắt đầu đọc và nạp file dữ liệu CSV từ đường dẫn: {}", csvPath);
 
         try (CSVReader reader = new CSVReader(new FileReader(csvPath))) {
