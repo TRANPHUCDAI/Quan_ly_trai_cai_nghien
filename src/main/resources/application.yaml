@@ -3,7 +3,7 @@ spring:
     name: Quan_ly_trai_cai_nghien
 
   datasource:
-    url ${SPRING_DATASOURCE_URL:jdbc:postgresql://neondb_owner:npg_8ef6JZjiBzWa@ep-small-bird-atagu9sa-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require:
+    url ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-small-bird-atagu9sa-pooler.c-9.us-east-1.aws.neon.tech/neondb?user=neondb_owner&password=npg_8ef6JZjiBzWa&sslmode=require&channelBinding=require:
       ap-southeast-1:
         aws:
           neon:
