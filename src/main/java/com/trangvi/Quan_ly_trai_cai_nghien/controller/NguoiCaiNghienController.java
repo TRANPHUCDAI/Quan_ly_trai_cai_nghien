@@ -56,8 +56,9 @@ public class NguoiCaiNghienController {
     }
 
     // 6. API Thống kê ô vuông xã
-    @GetMapping("/thong-ke/theo-xa")
-    public ResponseEntity<List<Map<String, Object>>> getThongKe() {
-        return ResponseEntity.ok(nguoiCaiNghienService.getThongKeTheoXa());
+    @GetMapping("/theo-xa") // Map chính xác đường dẫn /api/nguoi-cai-nghien/theo-xa
+    public ResponseEntity<List<Map<String, Object>>> getThongKeTheoXa() {
+        List<Map<String, Object>> stats = nguoiCaiNghienService.getThongKeTheoXa();
+        return ResponseEntity.ok(stats);
     }
 }
