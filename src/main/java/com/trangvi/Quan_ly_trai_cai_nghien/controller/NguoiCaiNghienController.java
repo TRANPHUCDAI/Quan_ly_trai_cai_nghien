@@ -15,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/nguoi-cai-nghien")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class NguoiCaiNghienController {
     private final NguoiCaiNghienService nguoiCaiNghienService;
 
