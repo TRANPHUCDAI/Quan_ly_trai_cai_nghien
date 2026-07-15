@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+// KHAI BÁO BIẾN ĐỊA CHỈ API RENDER CHUNG
+const API_BASE = 'https://quan-ly-trai-cai-nghien.onrender.com';
+
 function PersonFormModal({ isOpen, onClose, onSave, editData }) {
   const initialFormState = {
     hoVaTen: '',
@@ -33,14 +36,17 @@ function PersonFormModal({ isOpen, onClose, onSave, editData }) {
   const [listXa, setListXa] = useState([]);
   const [listDanToc, setListDanToc] = useState([]);
 
-  // Tải danh mục dropdown
+  // Tải danh mục dropdown từ Server Render thực tế
   useEffect(() => {
     if (isOpen) {
       const loadReferenceData = async () => {
         try {
-          const resXa = await axios.get('http://localhost:8081/api/nguoi-cai-nghien/thong-ke/theo-xa');
+          // 1. Lấy danh sách Xã (Không dùng localhost nữa)
+          const resXa = await axios.get(`${API_BASE}/api/nguoi-cai-nghien/theo-xa`);
           setListXa(resXa.data || []);
 
+          // 2. Tự động mồi danh sách Dân tộc mẫu hoặc gọi API dân tộc (nếu Backend có hỗ trợ)
+          // Để an toàn, chúng ta vẫn mồi danh sách chuẩn đồng bộ theo dữ liệu DB hiện tại
           setListDanToc([
             { id: 1, name: 'Kinh' },
             { id: 2, name: 'Thái' },
@@ -208,7 +214,6 @@ function PersonFormModal({ isOpen, onClose, onSave, editData }) {
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 block mb-3 border-b pb-1">3. Chấp hành cai nghiện</span>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* CẬP NHẬT ĐÚNG 3 LOẠI HÌNH THỨC CAI NGHIỆN THEO YÊU CẦU */}
               <div>
                 <label className="block text-gray-600 font-medium mb-1">Hình thức cai nghiện</label>
                 <select value={formData.hinhThucCaiNghien} onChange={e => setFormData({...formData, hinhThucCaiNghien: e.target.value})} className="w-full p-2.5 border rounded-lg focus:border-blue-500 outline-none">
