@@ -23,10 +23,10 @@ function App() {
   const [selectedCaxName, setSelectedCaxName] = useState('');
 
   // Các State phục vụ Phân trang chuyên nghiệp
-  const [currentPage, setCurrentPage] = useState(0); // Spring Boot bắt đầu từ trang 0
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const pageSize = 15; // Định dạng hiển thị 15 người mỗi trang
+  const pageSize = 15;
 
   // Modals States
   const [selectedPerson, setSelectedPerson] = useState(null);
@@ -35,42 +35,38 @@ function App() {
   const [formEditData, setFormEditData] = useState(null);
 
   // Tải danh sách hiển thị trên bảng có phân trang
-  // Tải danh sách hiển thị trên bảng có phân trang
-    const fetchListData = async () => {
-      try {
-        // THÊM ĐUÔI API CHUẨN VÀO ĐÂY:
-        const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien`, {
-          params: {
-            keyword,
-            tenCax: selectedCaxName,
-            page: currentPage,
-            size: pageSize,
-            sort: 'tt,asc'
-          }
-        });
-        setListData(response.data.content || []);
-        setTotalPages(response.data.totalPages || 0);
-        setTotalElements(response.data.totalElements || 0);
-      } catch (error) {
-        console.error("Lỗi lấy danh sách hồ sơ:", error);
-      }
-    };
+  const fetchListData = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien`, {
+        params: {
+          keyword,
+          tenCax: selectedCaxName,
+          page: currentPage,
+          size: pageSize,
+          sort: 'tt,asc'
+        }
+      });
+      setListData(response.data.content || []);
+      setTotalPages(response.data.totalPages || 0);
+      setTotalElements(response.data.totalElements || 0);
+    } catch (error) {
+      console.error("Lỗi lấy danh sách hồ sơ:", error);
+    }
+  };
 
   // Tải dữ liệu các ô vuông thống kê xã
-  // Tải dữ liệu các ô vuông thống kê xã
-    const fetchStats = async () => {
-      try {
-        // SỬA LẠI ĐƯỜNG DẪN ENDPOINT CHUẨN:
-        const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien/theo-xa`);
-        const formattedStats = response.data.map((item) => {
-          const nameXax = item.tenXa || 'Chưa xác định';
-          return { id: nameXax, name: nameXax, count: item.soLuong ?? 0 };
-        });
-        setStatsData(formattedStats);
-      } catch (error) {
-        console.error("Lỗi lấy dữ liệu thống kê xã:", error);
-      }
-    };
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien/theo-xa`);
+      const formattedStats = response.data.map((item) => {
+        const nameXax = item.tenXa || 'Chưa xác định';
+        return { id: nameXax, name: nameXax, count: item.soLuong ?? 0 };
+      });
+      setStatsData(formattedStats);
+    } catch (error) {
+      console.error("Lỗi lấy dữ liệu thống kê xã:", error);
+    }
+  };
 
   // Reset về trang 0 khi thay đổi từ khóa tìm kiếm hoặc lọc theo xã
   useEffect(() => {
@@ -87,70 +83,68 @@ function App() {
   }, []);
 
   // CHỨC NĂNG: XUẤT FILE EXCEL TOÀN BỘ HỆ THỐNG ĐẦY ĐỦ CÁC TRƯỜNG LÝ LỊCH
-    const handleExportExcel = async () => {
-      try {
-        alert("Hệ thống đang chuẩn bị tải dữ liệu toàn bộ các xã, vui lòng đợi trong giây lát...");
+  const handleExportExcel = async () => {
+    try {
+      alert("Hệ thống đang chuẩn bị tải dữ liệu toàn bộ các xã, vui lòng đợi trong giây lát...");
 
-        const response = await axios.get((`${API_BASE}/api/nguoi-cai-nghien`, {
-          params: { keyword: '', tenCax: '', page: 0, size: 5000 } // Đặt size cực đại để lấy trọn vẹn
-        });
+      const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien`, {
+        params: { keyword: '', tenCax: '', page: 0, size: 5000 }
+      });
 
-        const allData = response.data.content || [];
+      const allData = response.data.content || [];
 
-        if (allData.length === 0) {
-          alert("Không có dữ liệu nào trong hệ thống để xuất!");
-          return;
-        }
-
-        // MAP ĐẦY ĐỦ TẤT CẢ CÁC TRƯỜNG CỦA MỘT HỒ SƠ LÝ LỊCH
-        const dataToExport = allData.map((p, index) => ({
-          "STT": index + 1,
-          "Họ và Tên": p.hoVaTen ? p.hoVaTen.trim().replace(/\s+/g, ' ') : "Chưa cập nhật",
-          "Số CCCD/CMND": p.cccdCmnd || "Chưa cập nhật",
-          "Ngày cấp CCCD": p.ngayCap || "Chưa cập nhật",
-          "Ngày Sinh": p.ngaySinh || "Chưa cập nhật",
-          "Tuổi": p.tuoi || "Chưa cập nhật",
-          "Dân Tộc": p.tenDanToc || "Chưa cập nhật",
-          "Trình độ học vấn": p.trinhDo || "Chưa cập nhật",
-          "Quê Quán": p.queQuan || "Chưa cập nhật",
-          "Hộ khẩu thường trú": p.hkThuongTru || "Chưa cập nhật",
-          "Địa chỉ sau sáp nhập": p.diaChiSauSatNhap || "Chưa cập nhật",
-          "Địa bàn lập hồ sơ (Xã)": p.tenCaxLap || "Chưa cập nhật",
-          "Số lần cai nghiện": p.caiNghienLanThu ?? 0,
-          "Thời điểm SD ma túy đầu": p.thoidiemSdMaTuyDau || "Chưa cập nhật",
-          "Số tiền án": p.tienAn ?? 0,
-          "Số tiền sự": p.tienSu ?? 0,
-          "Người đại diện gia đình": p.daiDienGiaDinh || "Chưa cập nhật",
-          "Hình Thức Cai Nghiện": p.hinhThucCaiNghien || "Bắt buộc",
-          "Thời Gian Cai (Tháng)": p.thoiGianCh || 0,
-          "Ngày Vào Cơ Sở": p.ngayVaoCs || "Chưa cập nhật",
-          "Quyết định tòa án": p.qdToaAn || "Chưa cập nhật",
-          "TAND quyết định": p.tandKhuVuc || "Chưa cập nhật",
-          "Quyết định xét giảm": p.qdXetGiam || "Chưa cập nhật",
-          "Số tháng đã chấp hành": p.soThangDaCh ?? 0,
-          "Số ngày đã chấp hành": p.soNgayDaCh ?? 0,
-          "Dự Kiến Ngày Về": p.duKienNgayVe || "Chưa cập nhật",
-          "Dự kiến về năm 2026 (tháng)": p.duKienVe2026 || "",
-          "Dự kiến về năm 2027 (tháng)": p.duKienVe2027 || "",
-          "Ghi Chú Đặc Biệt": p.ghiChu || ""
-        }));
-
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Toan_Bo_Nguoi_Cai_Nghien");
-
-        // Kéo rộng tự động các cột Excel
-        const maxKeys = Object.keys(dataToExport[0]);
-        worksheet["!cols"] = maxKeys.map(key => ({
-          wch: Math.max(...dataToExport.map(row => (row[key] ? row[key].toString().length : 10)), key.length) + 3
-        }));
-
-        XLSX.writeFile(workbook, "Danh_sach_toan_bo_nguoi_cai_nghien_day_du.xlsx");
-      } catch (error) {
-        console.error("Lỗi xuất file Excel:", error);
-        alert("Đã xảy ra lỗi khi tải dữ liệu xuất Excel!");
+      if (allData.length === 0) {
+        alert("Không có dữ liệu nào trong hệ thống để xuất!");
+        return;
       }
-    };
+
+      const dataToExport = allData.map((p, index) => ({
+        "STT": index + 1,
+        "Họ và Tên": p.hoVaTen ? p.hoVaTen.trim().replace(/\s+/g, ' ') : "Chưa cập nhật",
+        "Số CCCD/CMND": p.cccdCmnd || "Chưa cập nhật",
+        "Ngày cấp CCCD": p.ngayCap || "Chưa cập nhật",
+        "Ngày Sinh": p.ngaySinh || "Chưa cập nhật",
+        "Tuổi": p.tuoi || "Chưa cập nhật",
+        "Dân Tộc": p.tenDanToc || "Chưa cập nhật",
+        "Trình độ học vấn": p.trinhDo || "Chưa cập nhật",
+        "Quê Quán": p.queQuan || "Chưa cập nhật",
+        "Hộ khẩu thường trú": p.hkThuongTru || "Chưa cập nhật",
+        "Địa chỉ sau sáp nhập": p.diaChiSauSatNhap || "Chưa cập nhật",
+        "Địa bàn lập hồ sơ (Xã)": p.tenCaxLap || "Chưa cập nhật",
+        "Số lần cai nghiện": p.caiNghienLanThu ?? 0,
+        "Thời điểm SD ma túy đầu": p.thoidiemSdMaTuyDau || "Chưa cập nhật",
+        "Số tiền án": p.tienAn ?? 0,
+        "Số tiền sự": p.tienSu ?? 0,
+        "Người đại diện gia đình": p.daiDienGiaDinh || "Chưa cập nhật",
+        "Hình Thức Cai Nghiện": p.hinhThucCaiNghien || "Bắt buộc",
+        "Thời Gian Cai (Tháng)": p.thoiGianCh || 0,
+        "Ngày Vào Cơ Sở": p.ngayVaoCs || "Chưa cập nhật",
+        "Quyết định tòa án": p.qdToaAn || "Chưa cập nhật",
+        "TAND quyết định": p.tandKhuVuc || "Chưa cập nhật",
+        "Quyết định xét giảm": p.qdXetGiam || "Chưa cập nhật",
+        "Số tháng đã chấp hành": p.soThangDaCh ?? 0,
+        "Số ngày đã chấp hành": p.soNgayDaCh ?? 0,
+        "Dự Kiến Ngày Về": p.duKienNgayVe || "Chưa cập nhật",
+        "Dự kiến về năm 2026 (tháng)": p.duKienVe2026 || "",
+        "Dự kiến về năm 2027 (tháng)": p.duKienVe2027 || "",
+        "Ghi Chú Đặc Biệt": p.ghiChu || ""
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Toan_Bo_Nguoi_Cai_Nghien");
+
+      const maxKeys = Object.keys(dataToExport[0]);
+      worksheet["!cols"] = maxKeys.map(key => ({
+        wch: Math.max(...dataToExport.map(row => (row[key] ? row[key].toString().length : 10)), key.length) + 3
+      }));
+
+      XLSX.writeFile(workbook, "Danh_sach_toan_bo_nguoi_cai_nghien_day_du.xlsx");
+    } catch (error) {
+      console.error("Lỗi xuất file Excel:", error);
+      alert("Đã xảy ra lỗi khi tải dữ liệu xuất Excel!");
+    }
+  };
 
   const handleSavePerson = async (formData) => {
     try {
@@ -333,7 +327,7 @@ function App() {
                   pageSize={pageSize}
                 />
 
-                {/* BỘ ĐIỀU HƯỚNG PHÂN TRANG GIAO DIỆN (PAGINATION CONTROLS) */}
+                {/* BỘ ĐIỀU HƯỚNG PHÂN TRANG GIAO DIỆN */}
                 {totalPages > 1 && (
                   <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
                     <div className="text-sm text-gray-500">
@@ -352,9 +346,7 @@ function App() {
                         ◀ Trước
                       </button>
 
-                      {/* Hiển thị danh sách các số trang */}
                       {Array.from({ length: totalPages }, (_, i) => {
-                        // Rút gọn bớt nút hiển thị nếu quá nhiều trang
                         if (totalPages > 6 && Math.abs(currentPage - i) > 2 && i !== 0 && i !== totalPages - 1) {
                           if (i === 1 || i === totalPages - 2) {
                             return <span key={i} className="px-2 self-center text-gray-400">...</span>;
