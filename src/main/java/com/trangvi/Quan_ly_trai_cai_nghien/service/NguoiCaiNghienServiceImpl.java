@@ -295,19 +295,46 @@ public class NguoiCaiNghienServiceImpl implements NguoiCaiNghienService, Command
         return val.trim().replaceAll("\\s+", " ");
     }
 
+    // 1. CHUẨN HOÁ SỐ NGUYÊN AN TOÀN (Bao dung 100%, không bao giờ quăng lỗi)
     private int parseInt(String val) {
-        if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("NaN")) return 0;
-        try { return (int) Double.parseDouble(val.trim()); } catch (Exception e) { return 0; }
+        if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("NaN") || val.equalsIgnoreCase("null")) {
+            return 0;
+        }
+        try {
+            // Loại bỏ các ký tự không phải số trước khi chuyển đổi
+            String cleanVal = val.trim().replaceAll("[^0-9.-]", "");
+            if (cleanVal.isEmpty()) return 0;
+            return (int) Double.parseDouble(cleanVal);
+        } catch (Exception e) {
+            return 0; // Trả về 0 nếu dữ liệu là chữ
+        }
     }
 
+    // 2. CHUẨN HOÁ NGÀY THÁNG AN TOÀN (Bao dung 100%, trả về null thay vì quăng lỗi làm sập dòng)
     private LocalDate parseDate(String val) {
-        if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("NaN")) return null;
-        String cleanVal = val.trim();
-        List<String> formats = Arrays.asList("yyyy-MM-dd", "d/M/yyyy", "dd/MM/yyyy", "d-M-yyyy");
-        for (String format : formats) {
-            try { return LocalDate.parse(cleanVal, DateTimeFormatter.ofPattern(format)); } catch (Exception ignored) {}
+        if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("NaN") || val.equalsIgnoreCase("null")) {
+            return null;
         }
-        return null;
+        String cleanVal = val.trim();
+
+        // Hỗ trợ trường hợp người dùng chỉ nhập mỗi năm sinh (Ví dụ: "1995" -> tự động chuyển thành "01/01/1995")
+        if (cleanVal.matches("^\\d{4}$")) {
+            cleanVal = "01/01/" + cleanVal;
+        }
+
+        List<String> formats = Arrays.asList(
+                "yyyy-MM-dd", "d/M/yyyy", "dd/MM/yyyy", "d-M-yyyy",
+                "dd-MM-yyyy", "yyyy/MM/dd", "yyyy.MM.dd", "yyyy"
+        );
+
+        for (String format : formats) {
+            try {
+                return LocalDate.parse(cleanVal, DateTimeFormatter.ofPattern(format));
+            } catch (Exception ignored) {}
+        }
+
+        log.warn("Không thể chuyển đổi ngày: '{}', hệ thống tự động bỏ qua ô này và tiếp tục lưu.", val);
+        return null; // Trả về null an toàn để dòng dữ liệu đó vẫn được lưu bình thường
     }
 
     private NguoiCaiNghienResponseDTO convertToResponseDTO(NguoiCaiNghien n) {

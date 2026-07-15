@@ -14,7 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true # Tiện ích: hiển thị câu lệnh SQL ra log khi chạy thử để dễ kiểm soát lỗi
     properties:
       hibernate:
