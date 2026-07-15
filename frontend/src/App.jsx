@@ -35,38 +35,42 @@ function App() {
   const [formEditData, setFormEditData] = useState(null);
 
   // Tải danh sách hiển thị trên bảng có phân trang
-  const fetchListData = async () => {
-    try {
-      const response = await axios.get(API_BASE, {
-        params: {
-          keyword,
-          tenCax: selectedCaxName,
-          page: currentPage,
-          size: pageSize,
-          sort: 'tt,asc' // Sắp xếp theo ID tăng dần
-        }
-      });
-      setListData(response.data.content || []);
-      setTotalPages(response.data.totalPages || 0);
-      setTotalElements(response.data.totalElements || 0);
-    } catch (error) {
-      console.error("Lỗi lấy danh sách hồ sơ:", error);
-    }
-  };
+  // Tải danh sách hiển thị trên bảng có phân trang
+    const fetchListData = async () => {
+      try {
+        // THÊM ĐUÔI API CHUẨN VÀO ĐÂY:
+        const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien`, {
+          params: {
+            keyword,
+            tenCax: selectedCaxName,
+            page: currentPage,
+            size: pageSize,
+            sort: 'tt,asc'
+          }
+        });
+        setListData(response.data.content || []);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalElements(response.data.totalElements || 0);
+      } catch (error) {
+        console.error("Lỗi lấy danh sách hồ sơ:", error);
+      }
+    };
 
   // Tải dữ liệu các ô vuông thống kê xã
-  const fetchStats = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/thong-ke/theo-xa`);
-      const formattedStats = response.data.map((item) => {
-        const nameXax = item.tenXa || 'Chưa xác định';
-        return { id: nameXax, name: nameXax, count: item.soLuong ?? 0 };
-      });
-      setStatsData(formattedStats);
-    } catch (error) {
-      console.error("Lỗi lấy dữ liệu thống kê xã:", error);
-    }
-  };
+  // Tải dữ liệu các ô vuông thống kê xã
+    const fetchStats = async () => {
+      try {
+        // SỬA LẠI ĐƯỜNG DẪN ENDPOINT CHUẨN:
+        const response = await axios.get(`${API_BASE}/api/nguoi-cai-nghien/theo-xa`);
+        const formattedStats = response.data.map((item) => {
+          const nameXax = item.tenXa || 'Chưa xác định';
+          return { id: nameXax, name: nameXax, count: item.soLuong ?? 0 };
+        });
+        setStatsData(formattedStats);
+      } catch (error) {
+        console.error("Lỗi lấy dữ liệu thống kê xã:", error);
+      }
+    };
 
   // Reset về trang 0 khi thay đổi từ khóa tìm kiếm hoặc lọc theo xã
   useEffect(() => {
@@ -87,7 +91,7 @@ function App() {
       try {
         alert("Hệ thống đang chuẩn bị tải dữ liệu toàn bộ các xã, vui lòng đợi trong giây lát...");
 
-        const response = await axios.get(API_BASE, {
+        const response = await axios.get((`${API_BASE}/api/nguoi-cai-nghien`, {
           params: { keyword: '', tenCax: '', page: 0, size: 5000 } // Đặt size cực đại để lấy trọn vẹn
         });
 
@@ -151,10 +155,10 @@ function App() {
   const handleSavePerson = async (formData) => {
     try {
       if (formData.tt) {
-        await axios.put(`${API_BASE}/${formData.tt}`, formData);
+        await axios.put(`${API_BASE}/api/nguoi-cai-nghien/${formData.tt}`, formData);
         alert("Cập nhật thông tin hồ sơ thành công!");
       } else {
-        await axios.post(API_BASE, formData);
+        await axios.post(`${API_BASE}/api/nguoi-cai-nghien`, formData);
         alert("Thêm mới hồ sơ thành công!");
       }
       setIsFormOpen(false);
@@ -169,7 +173,7 @@ function App() {
   const handleDeletePerson = async (ttId) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn hồ sơ đối tượng này?")) {
       try {
-        await axios.delete(`${API_BASE}/${ttId}`);
+        await axios.delete(`${API_BASE}/api/nguoi-cai-nghien/${ttId}`);
         alert("Xóa hồ sơ thành công!");
         fetchListData();
         fetchStats();
